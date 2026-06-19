@@ -32,15 +32,15 @@ export default defineComponent({
 
     return () => (
       <div
-        class="fixed top-0 left-0 right-0 h-10 bg-background/95 backdrop-blur-sm border-b z-[9999] select-none"
+        class="titlebar h-10 bg-background border-b select-none shrink-0"
         data-wails-drag
         style="--wails-draggable: drag"
       >
-        <div class="flex items-center justify-between h-full px-2.5 select-none">
-          <div class="flex-1 text-center text-[13px] font-medium text-foreground/80 pointer-events-none">
+        <div class="titlebar-inner flex items-center justify-between h-full px-2.5">
+          <div class="titlebar-title flex-1 text-center text-[13px] font-medium text-foreground/80 pointer-events-none">
             {props.title}
           </div>
-          <div class="absolute right-2.5 flex gap-2" data-wails-no-drag>
+          <div class="titlebar-controls flex gap-2" data-wails-no-drag>
             <button class={btnClass} onClick={minimize} title="最小化">
               <svg width="12" height="12" viewBox="0 0 12 12" class={iconClass}>
                 <rect x="0" y="5" width="12" height="2" fill="currentColor" />

@@ -2,7 +2,6 @@ import { defineComponent, ref } from "vue";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FolderOpen } from "@lucide/vue";
-import CustomTitleBar from "@/components/CustomTitleBar";
 
 export default defineComponent({
   name: "Home",
@@ -23,8 +22,7 @@ export default defineComponent({
     };
 
     return () => (
-      <div class="pureraw-app h-screen flex flex-col" onKeydown={handleKeydown} tabindex={-1}>
-        <CustomTitleBar title="PureRaw" />
+      <div class="pureraw-app h-full flex flex-col" onKeydown={handleKeydown} tabindex={-1}>
         <div class="pureraw-layout flex-1 flex overflow-hidden">
           {/* 左侧文件列表 */}
           <div class="pureraw-sidebar w-64 border-r flex flex-col">
@@ -83,7 +81,7 @@ export default defineComponent({
         </div>
 
         {/* 底部工具栏 */}
-        <div class="pureraw-toolbar h-12 border-t flex items-center justify-center gap-2 px-4 bg-background">
+        <div class="pureraw-toolbar h-12 border-t flex items-center justify-center gap-2 px-4 bg-background shrink-0">
           <Button variant="outline" size="sm">←</Button>
           {[1, 2, 3, 4, 5].map(n => (
             <Button
