@@ -181,16 +181,16 @@ var rawExtensions = map[string]bool{
 	".mrw": true, ".raw": true,
 }
 
-// GetThumbnail 获取照片缩略图路径（自动生成 WebP 缓存）
+// GetThumbnail 获取照片缩略图 data URI（自动生成 WebP 缓存）
 func (s *FileService) GetThumbnail(path string) (string, error) {
 	dir := thumbDir()
 	_ = os.MkdirAll(dir, 0755)
 
 	cacheFile := filepath.Join(dir, hashPath(path))
 
-	// 缓存命中
+	// 缓存命中：直接返回 data URI
 	if _, err := os.Stat(cacheFile); err == nil {
-		return "file:///" + filepath.ToSlash(cacheFile), nil
+		return readAsDataURI(cacheFile)
 	}
 
 	ext := strings.ToLower(filepath.Ext(path))
@@ -204,25 +204,23 @@ func (s *FileService) GetThumbnail(path string) (string, error) {
 			return "", fmt.Errorf("raw preview: %w", err)
 		}
 
-		// cwebp 转 WebP
 		if err := utils.ConvertToWebP(tmpJpg, cacheFile, 80); err != nil {
 			return "", fmt.Errorf("raw→webp: %w", err)
 		}
 
-		return "file:///" + filepath.ToSlash(cacheFile), nil
+		return readAsDataURI(cacheFile)
 	}
 
-	// 常规图片文件：Go 解码 → 缩放 → cwebp
+	// 常规图片文件
 	if !previewableExtensions[ext] {
 		return "", fmt.Errorf("unsupported format for thumbnail: %s", path)
 	}
 
-	// 先尝试直接用 cwebp（支持 JPEG/PNG/WebP 原生转换，更快）
+	// 先尝试直接用 cwebp（更快）
 	if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" || ext == ".gif" {
 		if err := utils.ConvertToWebP(path, cacheFile, 80); err == nil {
-			return "file:///" + filepath.ToSlash(cacheFile), nil
+			return readAsDataURI(cacheFile)
 		}
-		// cwebp 失败后 fallback 到 Go 手动处理
 	}
 
 	// Go 手动解码 + 缩放
@@ -248,7 +246,6 @@ func (s *FileService) GetThumbnail(path string) (string, error) {
 	thumb := image.NewRGBA(image.Rect(0, 0, w, h))
 	draw.ApproxBiLinear.Scale(thumb, thumb.Bounds(), img, bounds, draw.Over, nil)
 
-	// 临时 JPEG → cwebp
 	tmpJpg := filepath.Join(dir, hashPath(path)+".temp.jpg")
 	defer os.Remove(tmpJpg)
 
@@ -266,7 +263,16 @@ func (s *FileService) GetThumbnail(path string) (string, error) {
 		return "", err
 	}
 
-	return "file:///" + filepath.ToSlash(cacheFile), nil
+	return readAsDataURI(cacheFile)
+}
+
+// readAsDataURI 读取文件返回 data:image/webp;base64,... 格式
+func readAsDataURI(filePath string) (string, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return "", err
+	}
+	return "data:image/webp;base64," + base64.StdEncoding.EncodeToString(data), nil
 }
 
 // GetFileDataURI 读取文件并返回 data URI

@@ -63,7 +63,7 @@ export function GetFolderTree(folderPath: string): $CancellablePromise<$models.F
 }
 
 /**
- * GetThumbnail 获取照片缩略图路径（自动生成 WebP 缓存）
+ * GetThumbnail 获取照片缩略图 data URI（自动生成 WebP 缓存）
  */
 export function GetThumbnail(path: string): $CancellablePromise<string> {
     return $Call.ByID(3646606067, path);
