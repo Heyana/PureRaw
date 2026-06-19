@@ -23,6 +23,9 @@
 - Tailwind 语义类名：布局容器必须有语义化 class 名，shadcn 组件不需要
 - Frameless 窗口 + 自定义标题栏
 - 全局无 border（Card 除外）
+- **布局模式**：App 层 100vw/100vh flex-col，titlebar 普通 flex 子元素，content flex-1 占满剩余，路由在 content 内
+  - 禁止 fixed/absolute 定位标题栏，禁止 pt-N 偏移
+- **项目结构**：遵循用户级结构规范，pages/components/controls/composables/stores/api/router/utils/lib/types 分层，单文件 ≤200 行
 
 ## 功能计划
 - [x] 三栏布局：文件列表 + 预览 + 工具栏
