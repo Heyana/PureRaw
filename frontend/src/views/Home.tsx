@@ -1,67 +1,48 @@
 import { defineComponent, onMounted, onUnmounted } from "vue";
 import { Button } from "@/components/ui/button";
 import {
-  FolderOpen,
-  Star,
-  Flag,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
+  FolderOpen, Star, Flag, Trash2, ChevronLeft, ChevronRight,
+  Grid3x3, List, X,
 } from "@lucide/vue";
 import { usePhotosStore } from "@/stores/photos";
 import { Events } from "@wailsio/runtime";
 
 export default defineComponent({
   name: "Home",
-  components: { FolderOpen },
   setup() {
     const store = usePhotosStore();
 
     // === 键盘快捷键 ===
     const handleKeydown = (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
-        return;
-      }
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
-      if (e.key >= "1" && e.key <= "5") {
-        store.setRating(parseInt(e.key));
-      } else if (e.key === "ArrowLeft") {
-        store.prev();
-      } else if (e.key === "ArrowRight") {
-        store.next();
-      } else if (e.key === "Delete" || e.key === "x" || e.key === "X") {
-        store.toggleRejected();
-      } else if (e.key === "f" || e.key === "F") {
-        store.toggleFlagged();
+      // 筛选模式快捷键
+      if (store.currentIndex >= 0) {
+        if (e.key >= "1" && e.key <= "5") { store.setRating(parseInt(e.key)); return; }
+        if (e.key === "ArrowLeft") { store.prev(); return; }
+        if (e.key === "ArrowRight") { store.next(); return; }
+        if (e.key === "Delete" || e.key === "x" || e.key === "X") { store.toggleRejected(); return; }
+        if (e.key === "f" || e.key === "F") { store.toggleFlagged(); return; }
+        if (e.key === "Escape") { store.exitCulling(); return; }
       }
     };
 
-    // === 拖放 ===
     let dropCleanup: (() => void) | null = null;
 
     onMounted(() => {
       window.addEventListener("keydown", handleKeydown);
+      store.loadFolderHistory();
 
       dropCleanup = Events.On("files-dropped", (event: any) => {
-        const data = event?.data || {};
-        const files = data?.files || [];
-        const paths: string[] = Array.isArray(files) ? files : [];
-        if (paths.length === 0) return;
-
-        const first = paths[0].toLowerCase();
-        const isPhotoFile = /\.(arw|cr2|cr3|crw|dng|nef|nrw|orf|raf|rw2|pef|srf|sr2|3fr|kdc|erf|mrw|raw|jpe?g|png|tiff?|bmp|gif|webp|heic|heif)$/i.test(
-          first
-        );
-
-        if (isPhotoFile) {
-          store.addFiles(paths);
+        const files: string[] = event?.data?.files || [];
+        if (files.length === 0) return;
+        const first = files[0].toLowerCase();
+        const isPhoto = /\.(arw|cr2|cr3|crw|dng|nef|nrw|orf|raf|rw2|pef|srf|sr2|3fr|kdc|erf|mrw|raw|jpe?g|png|tiff?|bmp|gif|webp|heic|heif)$/i.test(first);
+        if (isPhoto) {
+          const dir = files[0].substring(0, files[0].lastIndexOf("\\")) || files[0];
+          store.selectFolder(dir);
         } else {
-          const dirPath =
-            paths[0].substring(0, paths[0].lastIndexOf("\\")) || paths[0];
-          store.loadFiles(dirPath);
+          store.selectFolder(files[0]);
         }
       });
     });
@@ -73,299 +54,269 @@ export default defineComponent({
 
     return () => (
       <div class="pureraw-app h-full flex flex-col">
-        {/* 主内容：预览区 + 右侧面板 */}
         <div class="pureraw-layout flex-1 flex overflow-hidden">
-          {/* ========== 主预览区 ========== */}
-          <div class="pureraw-preview flex-1 relative bg-muted/40 flex items-center justify-center">
-            {store.currentPhoto ? (
-              <>
-                {/* 图片 */}
-                {store.currentImage ? (
-                  <img
-                    src={store.currentImage}
-                    alt={store.currentPhoto.fileName}
-                    class="max-w-full max-h-full w-full h-full object-contain p-4"
-                  />
-                ) : (
-                  <div class="flex flex-col items-center gap-3 text-muted-foreground">
-                    <p class="text-lg font-medium">
-                      {store.currentPhoto.fileName}
-                    </p>
-                    <p class="text-sm">
-                      {[".arw", ".cr2", ".cr3", ".nef", ".dng", ".raw"].includes(
-                        store.currentPhoto.ext
-                      )
-                        ? "RAW 预览开发中"
-                        : "无法加载预览"}
-                    </p>
-                  </div>
-                )}
-
-                {/* Rejected 遮罩 */}
-                {store.isCurrentRejected && (
-                  <div class="absolute inset-0 bg-destructive/10 pointer-events-none" />
-                )}
-
-                {/* 左下：信息叠加 */}
-                <div class="absolute bottom-16 left-6 glass-overlay px-4 py-2.5 rounded-xl text-sm max-w-md">
-                  <p
-                    class={[
-                      "font-semibold truncate",
-                      store.isCurrentRejected
-                        ? "line-through text-muted-foreground"
-                        : "text-foreground",
-                    ]}
-                  >
-                    {store.currentPhoto.fileName}
-                  </p>
-                  <p class="text-xs text-muted-foreground mt-0.5">
-                    {store.currentPhoto.ext.toUpperCase()} ·{" "}
-                    {store.currentIndex + 1} / {store.totalCount}
-                  </p>
-                </div>
-
-                {/* 右下：星级叠加 */}
-                <div class="absolute bottom-16 right-6 glass-overlay px-3 py-2 rounded-xl flex items-center gap-0.5">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <Star
-                      key={n}
-                      class={[
-                        "size-4 cursor-pointer transition-colors",
-                        n <= store.currentRating
-                          ? "fill-yellow-400 text-yellow-400"
-                          : "text-muted-foreground/40",
-                      ]}
-                      onClick={() => store.setRating(n)}
-                    />
-                  ))}
-                </div>
-
-                {/* 底部：Action Bar */}
-                <div class="glass-overlay absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full px-5 py-2.5 flex items-center gap-4">
-                  {/* Flag */}
-                  <button
-                    class={[
-                      "p-1.5 rounded-full transition-colors",
-                      store.isCurrentFlagged ? "bg-accent" : "hover:bg-accent/50",
-                    ]}
-                    onClick={() => store.toggleFlagged()}
-                    title="Flag (F)"
-                  >
-                    <Flag
-                      class={[
-                        "size-4",
-                        store.isCurrentFlagged
-                          ? "fill-emerald-500 text-emerald-500"
-                          : "text-muted-foreground",
-                      ]}
-                    />
-                  </button>
-
-                  <div class="w-px h-5 bg-border" />
-
-                  {/* Reject */}
-                  <button
-                    class={[
-                      "p-1.5 rounded-full transition-colors",
-                      store.isCurrentRejected ? "bg-accent" : "hover:bg-accent/50",
-                    ]}
-                    onClick={() => store.toggleRejected()}
-                    title="Reject (X)"
-                  >
-                    <Trash2
-                      class={[
-                        "size-4",
-                        store.isCurrentRejected
-                          ? "text-destructive"
-                          : "text-muted-foreground",
-                      ]}
-                    />
-                  </button>
-
-                  <div class="w-px h-5 bg-border" />
-
-                  {/* 1-5 星星评分 */}
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button
-                      key={n}
-                      class={[
-                        "p-1.5 rounded-full transition-colors",
-                        n <= store.currentRating ? "bg-accent" : "hover:bg-accent/50",
-                      ]}
-                      onClick={() => store.setRating(n)}
-                      title={`Rate ${n}`}
-                    >
-                      <Star
-                        class={[
-                          "size-4",
-                          n <= store.currentRating
-                            ? "fill-yellow-400 text-yellow-400"
-                            : "text-muted-foreground",
-                        ]}
-                      />
-                    </button>
-                  ))}
-
-                  <div class="w-px h-5 bg-border" />
-
-                  {/* 导航 */}
-                  <button
-                    class={[
-                      "p-1.5 rounded-full transition-colors",
-                      store.currentIndex <= 0
-                        ? "opacity-30 cursor-not-allowed"
-                        : "hover:bg-accent/50",
-                    ]}
-                    onClick={() => store.prev()}
-                    disabled={store.currentIndex <= 0}
-                    title="Previous (←)"
-                  >
-                    <ChevronLeft class="size-4 text-muted-foreground" />
-                  </button>
-                  <span class="text-xs text-muted-foreground tabular-nums min-w-[48px] text-center">
-                    {store.currentIndex + 1}/{store.totalCount}
-                  </span>
-                  <button
-                    class={[
-                      "p-1.5 rounded-full transition-colors",
-                      store.currentIndex >= store.totalCount - 1
-                        ? "opacity-30 cursor-not-allowed"
-                        : "hover:bg-accent/50",
-                    ]}
-                    onClick={() => store.next()}
-                    disabled={store.currentIndex >= store.totalCount - 1}
-                    title="Next (→)"
-                  >
-                    <ChevronRight class="size-4 text-muted-foreground" />
-                  </button>
-                </div>
-              </>
-            ) : (
-              /* 空状态 */
-              <div class="empty-state flex flex-col items-center gap-4 text-muted-foreground">
-                <FolderOpen class="size-16 opacity-20" />
-                <p class="text-lg">拖放照片或打开文件夹开始筛选</p>
-                <p class="text-sm opacity-50">
-                  ← → 导航 · 1-5 评分 · F 标记 · X 丢弃
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* ========== 右侧缩略图面板 ========== */}
-          <div class="pureraw-panel w-72 border-l flex flex-col bg-background">
-            <div class="panel-header p-3 border-b shrink-0">
-              {/* @ts-ignore Button 通过 reka-ui Primitive 转发原生事件 */}
-              <Button
-                variant="outline"
-                class="w-full justify-start gap-2"
-                // @ts-ignore
-                onClick={() => store.openFolder()}
-                // @ts-ignore
-                disabled={store.loading}
-              >
-                <FolderOpen class="size-4" />
-                {store.loading ? "加载中..." : "打开文件夹"}
-              </Button>
-            </div>
-
-            {store.error && (
-              <div class="px-3 py-1.5 text-xs text-destructive bg-destructive/5 border-b">
-                {store.error}
-              </div>
-            )}
-
-            <div class="panel-grid flex-1 overflow-auto p-2">
-              {store.totalCount > 0 ? (
-                <div class="grid grid-cols-2 gap-2">
-                  {store.photos.map((photo, i) => (
-                    <div
-                      key={photo.path}
-                      class={[
-                        "thumbnail-item rounded-lg overflow-hidden cursor-pointer border-2 transition-all",
-                        i === store.currentIndex
-                          ? "border-primary shadow-sm"
-                          : "border-transparent hover:border-border",
-                        store.rejected.has(i) ? "opacity-50" : "",
-                      ]}
-                      onClick={() => store.goTo(i)}
-                    >
-                      <div class="aspect-[4/3] bg-muted relative">
-                        {store.currentImage && i === store.currentIndex ? (
-                          <img
-                            src={store.currentImage}
-                            alt=""
-                            class="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div class="w-full h-full flex items-center justify-center">
-                            <span class="text-[10px] text-muted-foreground truncate px-1">
-                              {photo.fileName}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* 评分角标 */}
-                        {store.ratings[i] && (
-                          <div class="absolute top-1 left-1 bg-background/85 backdrop-blur-sm rounded px-1 py-px flex items-center gap-px shadow-sm">
-                            <Star class="size-2.5 fill-yellow-400 text-yellow-400" />
-                            <span class="text-[10px] font-medium text-foreground">
-                              {store.ratings[i]}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Flagged 角标 */}
-                        {store.flagged.has(i) && (
-                          <div class="absolute top-1 right-1 size-3 rounded-full bg-emerald-500 border border-white" />
-                        )}
-
-                        {/* Rejected 角标 */}
-                        {store.rejected.has(i) && (
-                          <div class="absolute top-1 right-1 size-4 rounded-full bg-destructive flex items-center justify-center text-white">
-                            <span class="text-[10px] font-bold">✕</span>
-                          </div>
-                        )}
-                      </div>
-                      <div class="px-1.5 py-1">
-                        <p
-                          class={[
-                            "text-[11px] truncate",
-                            store.rejected.has(i)
-                              ? "line-through text-muted-foreground"
-                              : "text-foreground",
-                          ]}
-                        >
-                          {photo.fileName}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+          {store.currentIndex >= 0 ? (
+            /* ========== 筛选模式 ========== */
+            <div class="pureraw-culling flex-1 relative bg-muted/40 flex items-center justify-center">
+              {store.currentImage ? (
+                <img src={store.currentImage} class="max-w-full max-h-full w-full h-full object-contain p-4" />
               ) : (
-                <div class="flex flex-col items-center justify-center h-full text-muted-foreground text-sm gap-2 p-4">
-                  <FolderOpen class="size-8 opacity-20" />
-                  <p class="text-center">拖放照片或点击上方按钮</p>
+                <div class="text-muted-foreground text-center">
+                  <p class="text-lg font-medium">{store.currentPhoto?.fileName}</p>
+                  <p class="text-sm mt-1">
+                    {store.currentPhoto?.ext && [".arw", ".cr2", ".cr3", ".nef", ".dng", ".raw"].includes(store.currentPhoto.ext)
+                      ? "RAW 预览开发中" : "加载中..."}
+                  </p>
                 </div>
               )}
-            </div>
 
-            {/* 统计 */}
-            {store.totalCount > 0 && (
-              <div class="panel-status px-3 py-2 border-t text-xs text-muted-foreground flex justify-between">
-                <span>
-                  已评 {store.ratedCount} / {store.totalCount}
-                </span>
-                <span>
-                  {store.rejected.size > 0
-                    ? `丢弃 ${store.rejected.size}`
-                    : ""}
-                </span>
+              {/* Reject 遮罩 */}
+              {store.isCurrentRejected && (
+                <div class="absolute inset-0 bg-destructive/10 pointer-events-none" />
+              )}
+
+              {/* 左下：信息 */}
+              <div class="absolute bottom-16 left-6 glass-overlay px-4 py-2.5 rounded-xl text-sm max-w-md">
+                <p class={["font-semibold truncate", store.isCurrentRejected ? "line-through text-muted-foreground" : "text-foreground"]}>
+                  {store.currentPhoto?.fileName}
+                </p>
+                <p class="text-xs text-muted-foreground mt-0.5">
+                  {store.currentPhoto?.ext?.toUpperCase()} · {store.currentIndex + 1} / {store.totalCount}
+                </p>
               </div>
-            )}
-          </div>
+
+              {/* 右下：星级 */}
+              <div class="absolute bottom-16 right-6 glass-overlay px-3 py-2 rounded-xl flex items-center gap-0.5">
+                {[1,2,3,4,5].map(n => (
+                  <Star key={n} class={["size-4 cursor-pointer", n <= store.currentRating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/40"]}
+                    onClick={() => store.setRating(n)} />
+                ))}
+              </div>
+
+              {/* Action Bar */}
+              <div class="glass-overlay absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full px-5 py-2.5 flex items-center gap-4">
+                <ActionBtn active={store.isCurrentFlagged} onClick={() => store.toggleFlagged()} title="Flag (F)">
+                  <Flag class={["size-4", store.isCurrentFlagged ? "fill-emerald-500 text-emerald-500" : "text-muted-foreground"]} />
+                </ActionBtn>
+                <div class="w-px h-5 bg-border" />
+                <ActionBtn active={store.isCurrentRejected} onClick={() => store.toggleRejected()} title="Reject (X)">
+                  <Trash2 class={["size-4", store.isCurrentRejected ? "text-destructive" : "text-muted-foreground"]} />
+                </ActionBtn>
+                <div class="w-px h-5 bg-border" />
+                {[1,2,3,4,5].map(n => (
+                  <ActionBtn key={n} active={n <= store.currentRating} onClick={() => store.setRating(n)} title={`Rate ${n}`}>
+                    <Star class={["size-4", n <= store.currentRating ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground"]} />
+                  </ActionBtn>
+                ))}
+                <div class="w-px h-5 bg-border" />
+                <ActionBtn onClick={() => store.prev()} disabled={store.currentIndex <= 0} title="←">
+                  <ChevronLeft class="size-4 text-muted-foreground" />
+                </ActionBtn>
+                <span class="text-xs text-muted-foreground tabular-nums min-w-[48px] text-center">{store.currentIndex + 1}/{store.totalCount}</span>
+                <ActionBtn onClick={() => store.next()} disabled={store.currentIndex >= store.totalCount - 1} title="→">
+                  <ChevronRight class="size-4 text-muted-foreground" />
+                </ActionBtn>
+                <div class="w-px h-5 bg-border" />
+                <ActionBtn onClick={() => store.exitCulling()} title="返回 (Esc)">
+                  <X class="size-4 text-muted-foreground" />
+                </ActionBtn>
+              </div>
+            </div>
+          ) : (
+            /* ========== 浏览模式 ========== */
+            <>
+              {/* 左侧：文件夹面板 */}
+              <div class="pureraw-folder-panel w-56 border-r flex flex-col bg-background">
+                <div class="p-3 border-b">
+                  {/* @ts-ignore */}
+                  <Button variant="outline" class="w-full justify-start gap-2" // @ts-ignore
+                    onClick={() => store.openFolder()} // @ts-ignore
+                    disabled={store.loading}>
+                    <FolderOpen class="size-4" />
+                    {store.loading ? "加载中..." : "打开文件夹"}
+                  </Button>
+                </div>
+                {store.error && (
+                  <div class="px-3 py-1.5 text-xs text-destructive bg-destructive/5 border-b">{store.error}</div>
+                )}
+                <div class="folder-tree flex-1 overflow-auto p-2">
+                  {store.currentFolder ? (
+                    <div class="space-y-0.5">
+                      {/* 当前文件夹 */}
+                      <div class="folder-root px-2 py-1.5 rounded-md bg-accent text-accent-foreground text-sm font-medium truncate">
+                        📁 {store.currentFolder.split(/[\\\/]/).pop()}
+                        <span class="text-xs text-muted-foreground ml-1">({store.totalCount})</span>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* 文件夹历史 */}
+                  {store.folderHistory.length > 0 && (
+                    <div class="mt-4">
+                      <p class="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 mb-1.5">
+                        最近使用
+                      </p>
+                      <div class="space-y-0.5">
+                        {store.folderHistory.map(p => (
+                          <div key={p} class="group flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm truncate"
+                            onClick={() => store.selectFolder(p)}
+                            title={p}>
+                            <span class="truncate flex-1">📁 {p.split(/[\\\/]/).pop()}</span>
+                            <button class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent shrink-0"
+                              onClick={(e) => { e.stopPropagation(); store.removeFromHistory(p); }}
+                              title="移除">
+                              <X class="size-3 text-muted-foreground" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {!store.currentFolder && store.folderHistory.length === 0 && (
+                    <div class="flex flex-col items-center justify-center h-full text-muted-foreground text-sm gap-2 p-4">
+                      <FolderOpen class="size-8 opacity-20" />
+                      <p class="text-center">打开文件夹开始</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 右侧：照片内容区 */}
+              <div class="pureraw-content flex-1 flex flex-col bg-muted/20">
+                {store.currentFolder ? (
+                  <>
+                    {/* 工具栏 */}
+                    <div class="content-toolbar flex items-center justify-between px-4 py-2 border-b bg-background">
+                      <span class="text-sm font-medium text-muted-foreground">
+                        {store.totalCount} 张照片
+                      </span>
+                      <div class="flex items-center gap-1 bg-muted rounded-md p-0.5">
+                        <button class={["p-1.5 rounded transition-colors", store.viewMode === "grid" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"]}
+                          onClick={() => store.viewMode = "grid"}>
+                          <Grid3x3 class="size-3.5" />
+                        </button>
+                        <button class={["p-1.5 rounded transition-colors", store.viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"]}
+                          onClick={() => store.viewMode = "list"}>
+                          <List class="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 内容区 */}
+                    {store.totalCount === 0 ? (
+                      <div class="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+                        此文件夹中没有照片
+                      </div>
+                    ) : store.viewMode === "grid" ? (
+                      /* Grid 视图 */
+                      <div class="photo-grid flex-1 overflow-auto p-4">
+                        <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                          {store.photos.map((photo, i) => (
+                            <div key={photo.path} class="grid-item group cursor-pointer"
+                              onClick={() => store.enterCulling(i)}
+                              onDblclick={() => store.enterCulling(i)}>
+                              <div class={[
+                                "aspect-[4/3] rounded-lg overflow-hidden bg-muted relative border-2 transition-all",
+                                store.ratings[i] ? "border-yellow-400/50" : "border-transparent",
+                                store.rejected.has(i) ? "opacity-40" : "",
+                                "group-hover:border-primary/50",
+                              ]}>
+                                {store.thumbnails[photo.path] ? (
+                                  <img src={store.thumbnails[photo.path]} class="w-full h-full object-cover" />
+                                ) : (
+                                  <div class="w-full h-full flex items-center justify-center bg-muted">
+                                    <span class="text-[10px] text-muted-foreground truncate px-1">{photo.fileName}</span>
+                                  </div>
+                                )}
+
+                                {/* 角标 */}
+                                {store.ratings[i] ? (
+                                  <div class="absolute top-1.5 left-1.5 bg-background/90 backdrop-blur-sm rounded px-1.5 py-px flex items-center gap-px shadow-sm">
+                                    <Star class="size-2.5 fill-yellow-400 text-yellow-400" />
+                                    <span class="text-[10px] font-medium">{store.ratings[i]}</span>
+                                  </div>
+                                ) : null}
+                                {store.flagged.has(i) && (
+                                  <div class="absolute top-1.5 right-1.5 size-3 rounded-full bg-emerald-500 border border-white shadow-sm" />
+                                )}
+                                {store.rejected.has(i) && (
+                                  <div class="absolute top-1.5 right-1.5 size-4 rounded-full bg-destructive flex items-center justify-center text-white shadow-sm">
+                                    <span class="text-[10px] font-bold">✕</span>
+                                  </div>
+                                )}
+                              </div>
+                              <p class={["text-[11px] mt-1 px-0.5 truncate", store.rejected.has(i) ? "line-through text-muted-foreground" : "text-foreground"]}>
+                                {photo.fileName}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      /* List 视图 */
+                      <div class="photo-list flex-1 overflow-auto">
+                        {store.photos.map((photo, i) => (
+                          <div key={photo.path} class={[
+                            "flex items-center gap-3 px-4 py-2 border-b border-border/50 cursor-pointer hover:bg-muted/50 transition-colors",
+                            store.rejected.has(i) ? "opacity-40" : "",
+                          ]} onClick={() => store.enterCulling(i)}>
+                            <div class="w-10 h-10 rounded bg-muted overflow-hidden shrink-0">
+                              {store.thumbnails[photo.path] ? (
+                                <img src={store.thumbnails[photo.path]} class="w-full h-full object-cover" />
+                              ) : (
+                                <div class="w-full h-full flex items-center justify-center text-[10px] text-muted-foreground">
+                                  {photo.ext.toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+                            <span class={["text-sm flex-1 truncate", store.rejected.has(i) ? "line-through text-muted-foreground" : "text-foreground"]}>
+                              {photo.fileName}
+                            </span>
+                            <span class="text-xs text-muted-foreground">{photo.ext.toUpperCase()}</span>
+                            {store.ratings[i] ? (
+                              <div class="flex items-center gap-px">
+                                <Star class="size-3 fill-yellow-400 text-yellow-400" />
+                                <span class="text-xs font-medium">{store.ratings[i]}</span>
+                              </div>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div class="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
+                    <FolderOpen class="size-16 opacity-15" />
+                    <p>打开文件夹或从历史记录中选择</p>
+                    <p class="text-xs opacity-50">支持拖放文件夹到窗口</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
   },
 });
+
+/** ActionBar 小按钮 */
+const ActionBtn = (props: {
+  active?: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  title: string;
+}, { slots }: any) => (
+  <button
+    class={[
+      "p-1.5 rounded-full transition-colors",
+      props.disabled ? "opacity-30 cursor-not-allowed" : props.active ? "bg-accent" : "hover:bg-accent/50",
+    ]}
+    onClick={props.onClick}
+    disabled={props.disabled}
+    title={props.title}
+  >
+    {slots.default?.()}
+  </button>
+);

@@ -2,7 +2,10 @@ module PureRaw
 
 go 1.25.0
 
-require github.com/wailsapp/wails/v3 v3.0.0-alpha2.104
+require (
+	github.com/wailsapp/wails/v3 v3.0.0-alpha2.104
+	golang.org/x/image v0.43.0
+)
 
 require (
 	github.com/adrg/xdg v0.5.3 // indirect

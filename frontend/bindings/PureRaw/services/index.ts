@@ -11,5 +11,6 @@ export {
 };
 
 export {
+    FolderNode,
     PhotoInfo
 } from "./models.js";

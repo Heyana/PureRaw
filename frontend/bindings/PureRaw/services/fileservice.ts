@@ -15,7 +15,14 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as $models from "./models.js";
 
 /**
- * GetFileDataURI 读取文件并返回 data URI（用于前端图片预览）
+ * AddFolderHistory 添加文件夹到历史记录
+ */
+export function AddFolderHistory(folderPath: string): $CancellablePromise<void> {
+    return $Call.ByID(1343484426, folderPath);
+}
+
+/**
+ * GetFileDataURI 读取文件并返回 data URI
  */
 export function GetFileDataURI(path: string): $CancellablePromise<string> {
     return $Call.ByID(3422778135, path);
@@ -31,7 +38,39 @@ export function GetFiles(folderPath: string): $CancellablePromise<$models.PhotoI
 }
 
 /**
- * SelectFolder 打开原生文件夹选择对话框，返回选择的路径
+ * GetFolderHistory 获取最近打开的文件夹列表
+ */
+export function GetFolderHistory(): $CancellablePromise<string[]> {
+    return $Call.ByID(4086301523).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
+/**
+ * GetFolderTree 获取文件夹树结构（单层子目录）
+ */
+export function GetFolderTree(folderPath: string): $CancellablePromise<$models.FolderNode> {
+    return $Call.ByID(649709577, folderPath).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+/**
+ * GetThumbnail 获取照片缩略图路径（自动生成 WebP 缓存）
+ */
+export function GetThumbnail(path: string): $CancellablePromise<string> {
+    return $Call.ByID(3646606067, path);
+}
+
+/**
+ * RemoveFolderHistory 从历史记录中移除
+ */
+export function RemoveFolderHistory(folderPath: string): $CancellablePromise<void> {
+    return $Call.ByID(758867473, folderPath);
+}
+
+/**
+ * SelectFolder 打开原生文件夹选择对话框
  */
 export function SelectFolder(): $CancellablePromise<string> {
     return $Call.ByID(1349170739);
@@ -40,3 +79,5 @@ export function SelectFolder(): $CancellablePromise<string> {
 // Private type creation functions
 const $$createType0 = $models.PhotoInfo.createFrom;
 const $$createType1 = $Create.Array($$createType0);
+const $$createType2 = $Create.Array($Create.Any);
+const $$createType3 = $models.FolderNode.createFrom;

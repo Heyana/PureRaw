@@ -6,6 +6,43 @@
 import { Create as $Create } from "@wailsio/runtime";
 
 /**
+ * FolderNode 文件夹树节点
+ */
+export class FolderNode {
+    "name": string;
+    "path": string;
+    "photoCnt": number;
+    "subDirs"?: FolderNode[];
+
+    /** Creates a new FolderNode instance. */
+    constructor($$source: Partial<FolderNode> = {}) {
+        if (!("name" in $$source)) {
+            this["name"] = "";
+        }
+        if (!("path" in $$source)) {
+            this["path"] = "";
+        }
+        if (!("photoCnt" in $$source)) {
+            this["photoCnt"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new FolderNode instance from a string or object.
+     */
+    static createFrom($$source: any = {}): FolderNode {
+        const $$createField3_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("subDirs" in $$parsedSource) {
+            $$parsedSource["subDirs"] = $$createField3_0($$parsedSource["subDirs"]);
+        }
+        return new FolderNode($$parsedSource as Partial<FolderNode>);
+    }
+}
+
+/**
  * PhotoInfo 照片文件信息
  */
 export class PhotoInfo {
@@ -36,3 +73,7 @@ export class PhotoInfo {
         return new PhotoInfo($$parsedSource as Partial<PhotoInfo>);
     }
 }
+
+// Private type creation functions
+const $$createType0 = FolderNode.createFrom;
+const $$createType1 = $Create.Array($$createType0);
