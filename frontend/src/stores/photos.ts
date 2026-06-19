@@ -138,6 +138,22 @@ export const usePhotosStore = defineStore("photos", () => {
     await loadThumbnails(photos.value);
   }
 
+  /** 刷新单张照片缩略图 */
+  async function refreshSingleThumbnail(photo: PhotoInfo): Promise<void> {
+    const previewExts = [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif",
+      ".arw", ".cr2", ".cr3", ".crw", ".dng", ".nef", ".nrw", ".orf",
+      ".raf", ".rw2", ".pef", ".raw"];
+    if (!previewExts.includes(photo.ext)) return;
+    try {
+      // 从 map 清除旧缓存
+      delete thumbnails.value[photo.path];
+      const thumb = await FileService.GetThumbnail(photo.path);
+      if (thumb) thumbnails.value[photo.path] = thumb;
+    } catch {
+      // skip
+    }
+  }
+
   // === 筛选模式 ===
 
   function enterCulling(index: number): void {
@@ -218,6 +234,7 @@ export const usePhotosStore = defineStore("photos", () => {
     loadFolderHistory, openFolder, selectFolder, removeFromHistory,
     loadThumbnails,
     refreshThumbnails,
+    refreshSingleThumbnail,
     enterCulling, exitCulling,
     setRating, toggleRejected, toggleFlagged,
     prev, next, goTo,

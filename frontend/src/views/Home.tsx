@@ -208,7 +208,13 @@ export default defineComponent({
                   <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                     {store.sortedPhotos.map((photo, i) => (
                       <div key={photo.path} class="grid-item group cursor-pointer"
-                        onClick={() => store.enterCulling(i)}>
+                        onClick={() => store.enterCulling(i)}
+                        onContextmenu={(e: MouseEvent) => {
+                          e.preventDefault();
+                          rightMenu.open([
+                            { label: "刷新缩略图", icon: "refresh", action: () => store.refreshSingleThumbnail(photo) },
+                          ], e.clientX, e.clientY);
+                        }}>
                         <div class={[
                           "aspect-[4/3] rounded-lg overflow-hidden bg-muted relative border-2 transition-all",
                           store.ratings[i] ? "border-yellow-400/50" : "border-transparent",
@@ -246,7 +252,13 @@ export default defineComponent({
                     <div key={photo.path} class={[
                       "flex items-center gap-3 px-4 py-2 border-b border-border/50 cursor-pointer hover:bg-muted/50 transition-colors",
                       store.rejected.has(i) ? "opacity-40" : "",
-                    ]} onClick={() => store.enterCulling(i)}>
+                    ]} onClick={() => store.enterCulling(i)}
+                      onContextmenu={(e: MouseEvent) => {
+                        e.preventDefault();
+                        rightMenu.open([
+                          { label: "刷新缩略图", icon: "refresh", action: () => store.refreshSingleThumbnail(photo) },
+                        ], e.clientX, e.clientY);
+                      }}>
                       <div class="w-10 h-10 rounded bg-muted overflow-hidden shrink-0">
                         {store.thumbnails[photo.path] ? (
                           <img src={store.thumbnails[photo.path]} class="w-full h-full object-cover" />
