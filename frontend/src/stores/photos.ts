@@ -6,6 +6,8 @@ export const usePhotosStore = defineStore("photos", () => {
   const photos = ref<PhotoInfo[]>([]);
   const currentIndex = ref(-1);
   const ratings = ref<Record<number, number>>({});
+  const rejected = ref<Set<number>>(new Set());
+  const flagged = ref<Set<number>>(new Set());
   const currentImage = ref<string>("");
   const loading = ref(false);
   const error = ref("");
@@ -23,7 +25,17 @@ export const usePhotosStore = defineStore("photos", () => {
 
   // 当前评分
   const currentRating = computed(() =>
-    currentIndex.value >= 0 ? ratings.value[currentIndex.value] ?? null : null
+    currentIndex.value >= 0 ? (ratings.value[currentIndex.value] ?? 0) : 0
+  );
+
+  // 当前是否 rejected
+  const isCurrentRejected = computed(() =>
+    currentIndex.value >= 0 ? rejected.value.has(currentIndex.value) : false
+  );
+
+  // 当前是否 flagged
+  const isCurrentFlagged = computed(() =>
+    currentIndex.value >= 0 ? flagged.value.has(currentIndex.value) : false
   );
 
   /** 通过文件夹对话框加载照片 */
@@ -51,6 +63,8 @@ export const usePhotosStore = defineStore("photos", () => {
         photos.value = files;
         currentIndex.value = 0;
         ratings.value = {};
+        rejected.value = new Set();
+        flagged.value = new Set();
         await loadCurrentImage();
       }
     } catch (e: any) {
@@ -95,7 +109,6 @@ export const usePhotosStore = defineStore("photos", () => {
       return;
     }
 
-    // 对于常见图片格式，尝试加载预览
     const previewExts = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
     if (previewExts.includes(photo.ext)) {
       try {
@@ -105,7 +118,6 @@ export const usePhotosStore = defineStore("photos", () => {
         currentImage.value = "";
       }
     } else {
-      // RAW 格式暂不预览
       currentImage.value = "";
     }
   }
@@ -117,7 +129,33 @@ export const usePhotosStore = defineStore("photos", () => {
     }
   }
 
-  /** 导航到上一张 */
+  /** 切换当前照片的 rejected 状态 */
+  function toggleRejected(): void {
+    const idx = currentIndex.value;
+    if (idx < 0) return;
+    const next = new Set(rejected.value);
+    if (next.has(idx)) {
+      next.delete(idx);
+    } else {
+      next.add(idx);
+    }
+    rejected.value = next;
+  }
+
+  /** 切换当前照片的 flagged 状态 */
+  function toggleFlagged(): void {
+    const idx = currentIndex.value;
+    if (idx < 0) return;
+    const next = new Set(flagged.value);
+    if (next.has(idx)) {
+      next.delete(idx);
+    } else {
+      next.add(idx);
+    }
+    flagged.value = next;
+  }
+
+  /** 导航到上一张（跳过 rejected 的可选） */
   async function prev(): Promise<void> {
     if (currentIndex.value > 0) {
       currentIndex.value--;
@@ -145,6 +183,8 @@ export const usePhotosStore = defineStore("photos", () => {
     photos,
     currentIndex,
     ratings,
+    rejected,
+    flagged,
     currentImage,
     loading,
     error,
@@ -152,10 +192,14 @@ export const usePhotosStore = defineStore("photos", () => {
     totalCount,
     ratedCount,
     currentRating,
+    isCurrentRejected,
+    isCurrentFlagged,
     openFolder,
     loadFiles,
     addFiles,
     setRating,
+    toggleRejected,
+    toggleFlagged,
     prev,
     next,
     goTo,
