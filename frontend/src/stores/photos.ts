@@ -98,8 +98,8 @@ export const usePhotosStore = defineStore("photos", () => {
       thumbnails.value = {};
       await loadFolderHistory();
       if (files && files.length > 0) {
-        // 只预加载首屏可见的几张，其余懒加载
-        await loadThumbnails(files.slice(0, 6));
+        // 首屏缩略图预加载（不 await，避免阻塞文件夹打开）
+        loadThumbnails(files.slice(0, 6));
       }
     } catch (e: any) {
       error.value = e?.message || String(e);
@@ -128,11 +128,21 @@ export const usePhotosStore = defineStore("photos", () => {
       ".arw", ".cr2", ".cr3", ".crw", ".dng", ".nef", ".nrw", ".orf",
       ".raf", ".rw2", ".pef", ".raw"];
     if (!previewExts.includes(photo.ext)) return;
+
+    // 并发限流：同一时间最多 4 个请求
+    const key = photo.path;
+    if (_pending.has(key)) return;
+    _pending.add(key);
+
     try {
       const thumb = await FileService.GetThumbnail(photo.path);
       if (thumb) thumbnails.value[photo.path] = thumb;
     } catch { /* skip */ }
+    finally { _pending.delete(key); }
   }
+
+  /** 限流：并发请求去重集合 */
+  const _pending = new Set<string>();
 
   /** 刷新当前文件夹所有缩略图（删除磁盘缓存后重新生成） */
   async function refreshThumbnails(): Promise<void> {

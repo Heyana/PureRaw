@@ -28,8 +28,18 @@ export default defineComponent({
               const el = entry.target as HTMLElement;
               const path = el.dataset.thumbPath;
               if (path) {
-                const photo = store.sortedPhotos.find(p => p.path === path);
-                if (photo) store.loadSingleThumbnail(photo);
+                // 用 requestIdleCallback 延迟，不阻塞滚动
+                const _path = path;
+                (window as any).requestIdleCallback?.(
+                  () => {
+                    const photo = store.sortedPhotos.find(p => p.path === _path);
+                    if (photo) store.loadSingleThumbnail(photo);
+                  },
+                  { timeout: 200 }
+                ) ?? requestAnimationFrame(() => {
+                  const photo = store.sortedPhotos.find(p => p.path === _path);
+                  if (photo) store.loadSingleThumbnail(photo);
+                });
               }
               thumbObserver?.unobserve(el);
             }
