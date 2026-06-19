@@ -31,7 +31,21 @@
 - [x] 三栏布局：文件列表 + 预览 + 工具栏
 - [x] 快捷键评分（1-5）
 - [x] ← → 照片导航
-- [ ] 文件拖放加载照片
-- [ ] 图片预览（JPEG/PNG）
-- [ ] RAW 格式支持
+- [x] 文件拖放加载照片
+- [x] 图片预览（JPEG/PNG - data URI）
+- [ ] RAW 格式预览支持
 - [ ] AI 自动评分
+
+## 后端服务
+- `WindowService`：窗口控制（最小化/最大化/关闭/全屏/置顶/居中）
+- `ClipboardService`：剪贴板读写
+- `FileService`：SelectFolder（原生对话框）、GetFiles（28种格式扫描）、GetFileDataURI（Base64预览）
+
+## 前端 Store
+- `stores/photos.ts`：照片数组/当前索引/评分记录/图片加载/导航/评分操作
+- `stores/counter.ts`：示例 store，已不再使用
+
+## Wails3 绑定
+- 绑定文件格式：`.js` / `.ts`（由 wails3 generate bindings 生成）
+- 生成命令：`wails3 generate bindings -clean`
+- 调用方式：`import { FileService } from "bindings/PureRaw/services/index.js"`

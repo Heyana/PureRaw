@@ -13,7 +13,6 @@ export default defineComponent({
 
     // 全局键盘快捷键
     const handleKeydown = (e: KeyboardEvent) => {
-      // 忽略输入框中的按键
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement
@@ -36,27 +35,27 @@ export default defineComponent({
     onMounted(() => {
       window.addEventListener("keydown", handleKeydown);
 
-      // 监听 Wails 文件拖放事件
       dropCleanup = Events.On("files-dropped", (event: any) => {
+        console.log("[PureRaw] files-dropped event:", event);
         const data = event?.data || {};
         const files = data?.files || [];
         const paths: string[] = Array.isArray(files) ? files : [];
 
+        console.log("[PureRaw] parsed paths:", paths);
+
         if (paths.length > 0) {
-          // 判断是单个文件夹还是多个照片文件
           const first = paths[0].toLowerCase();
           const isPhotoFile = /\.(arw|cr2|cr3|crw|dng|nef|nrw|orf|raf|rw2|pef|srf|sr2|3fr|kdc|erf|mrw|raw|jpe?g|png|tiff?|bmp|gif|webp|heic|heif)$/i.test(
             first
           );
 
           if (isPhotoFile) {
+            console.log("[PureRaw] detected photo files, adding:", paths.length);
             store.addFiles(paths);
           } else {
-            // 当作文件夹处理：取第一个路径作为文件夹目录
-            // 如果拖放的是文件夹，Wails 会返回文件夹内的文件列表
-            // 这里简单处理：用第一个文件的目录作为文件夹路径
             const dirPath =
               paths[0].substring(0, paths[0].lastIndexOf("\\")) || paths[0];
+            console.log("[PureRaw] assumed folder path:", dirPath);
             store.loadFiles(dirPath);
           }
         }
@@ -68,7 +67,6 @@ export default defineComponent({
       if (dropCleanup) dropCleanup();
     });
 
-    // 工具栏评分按钮
     const handleRating = (n: number) => {
       store.setRating(n);
     };
@@ -82,7 +80,9 @@ export default defineComponent({
               <Button
                 variant="outline"
                 class="w-full justify-start gap-2"
+                // @ts-ignore Button 通过 reka-ui Primitive 转发原生事件
                 onClick={() => store.openFolder()}
+                // @ts-ignore
                 disabled={store.loading}
               >
                 <FolderOpen class="size-4" />
@@ -176,7 +176,9 @@ export default defineComponent({
           <Button
             variant="outline"
             size="sm"
+            // @ts-ignore
             onClick={() => store.prev()}
+            // @ts-ignore
             disabled={store.currentIndex <= 0}
           >
             ←
@@ -187,6 +189,7 @@ export default defineComponent({
               variant={store.currentRating === n ? "default" : "outline"}
               size="sm"
               class="w-10"
+              // @ts-ignore
               onClick={() => handleRating(n)}
             >
               {n}
@@ -195,7 +198,9 @@ export default defineComponent({
           <Button
             variant="outline"
             size="sm"
+            // @ts-ignore
             onClick={() => store.next()}
+            // @ts-ignore
             disabled={store.currentIndex >= store.totalCount - 1}
           >
             →
