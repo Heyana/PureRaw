@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"PureRaw/utils"
+
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"golang.org/x/image/draw"
 	_ "golang.org/x/image/webp" // WebP 解码器注册
@@ -75,7 +77,7 @@ func thumbDir() string {
 // hashPath 对文件路径做 MD5 生成缓存文件名
 func hashPath(path string) string {
 	h := md5.Sum([]byte(path))
-	return fmt.Sprintf("%x.jpg", h)
+	return fmt.Sprintf("%x.webp", h)
 }
 
 // SelectFolder 打开原生文件夹选择对话框
@@ -170,6 +172,15 @@ func (s *FileService) GetFolderTree(folderPath string) (FolderNode, error) {
 	return root, nil
 }
 
+// rawExtensions RAW 格式扩展名
+var rawExtensions = map[string]bool{
+	".arw": true, ".cr2": true, ".cr3": true, ".crw": true,
+	".dng": true, ".nef": true, ".nrw": true, ".orf": true,
+	".raf": true, ".rw2": true, ".pef": true, ".srf": true,
+	".sr2": true, ".3fr": true, ".kdc": true, ".erf": true,
+	".mrw": true, ".raw": true,
+}
+
 // GetThumbnail 获取照片缩略图路径（自动生成 WebP 缓存）
 func (s *FileService) GetThumbnail(path string) (string, error) {
 	dir := thumbDir()
@@ -182,24 +193,50 @@ func (s *FileService) GetThumbnail(path string) (string, error) {
 		return "file:///" + filepath.ToSlash(cacheFile), nil
 	}
 
-	// 生成缩略图
-	if !previewableExtensions[strings.ToLower(filepath.Ext(path))] {
+	ext := strings.ToLower(filepath.Ext(path))
+
+	// RAW 文件：通过 exiftool 提取内嵌预览
+	if rawExtensions[ext] {
+		tmpJpg := filepath.Join(dir, hashPath(path)+".tmp.jpg")
+		defer os.Remove(tmpJpg)
+
+		if err := utils.ExtractPreview(path, tmpJpg); err != nil {
+			return "", fmt.Errorf("raw preview: %w", err)
+		}
+
+		// cwebp 转 WebP
+		if err := utils.ConvertToWebP(tmpJpg, cacheFile, 80); err != nil {
+			return "", fmt.Errorf("raw→webp: %w", err)
+		}
+
+		return "file:///" + filepath.ToSlash(cacheFile), nil
+	}
+
+	// 常规图片文件：Go 解码 → 缩放 → cwebp
+	if !previewableExtensions[ext] {
 		return "", fmt.Errorf("unsupported format for thumbnail: %s", path)
 	}
 
+	// 先尝试直接用 cwebp（支持 JPEG/PNG/WebP 原生转换，更快）
+	if ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" || ext == ".gif" {
+		if err := utils.ConvertToWebP(path, cacheFile, 80); err == nil {
+			return "file:///" + filepath.ToSlash(cacheFile), nil
+		}
+		// cwebp 失败后 fallback 到 Go 手动处理
+	}
+
+	// Go 手动解码 + 缩放
 	srcFile, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
 	defer srcFile.Close()
 
-	// 解码图片
 	img, _, err := image.Decode(srcFile)
 	if err != nil {
 		return "", fmt.Errorf("decode: %w", err)
 	}
 
-	// 缩放到 320px 宽
 	const thumbWidth = 320
 	bounds := img.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()
@@ -211,15 +248,21 @@ func (s *FileService) GetThumbnail(path string) (string, error) {
 	thumb := image.NewRGBA(image.Rect(0, 0, w, h))
 	draw.ApproxBiLinear.Scale(thumb, thumb.Bounds(), img, bounds, draw.Over, nil)
 
-	// 编码为 JPEG
-	outFile, err := os.Create(cacheFile)
+	// 临时 JPEG → cwebp
+	tmpJpg := filepath.Join(dir, hashPath(path)+".temp.jpg")
+	defer os.Remove(tmpJpg)
+
+	outFile, err := os.Create(tmpJpg)
 	if err != nil {
 		return "", err
 	}
-	defer outFile.Close()
+	if err := jpeg.Encode(outFile, thumb, &jpeg.Options{Quality: 90}); err != nil {
+		outFile.Close()
+		return "", err
+	}
+	outFile.Close()
 
-	err = jpeg.Encode(outFile, thumb, &jpeg.Options{Quality: 75})
-	if err != nil {
+	if err := utils.ConvertToWebP(tmpJpg, cacheFile, 80); err != nil {
 		return "", err
 	}
 

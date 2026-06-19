@@ -98,7 +98,9 @@ export const usePhotosStore = defineStore("photos", () => {
   async function loadThumbnails(photoList: PhotoInfo[]): Promise<void> {
     for (const photo of photoList) {
       if (thumbnails.value[photo.path]) continue;
-      const previewExts = [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"];
+      const previewExts = [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif",
+        ".arw", ".cr2", ".cr3", ".crw", ".dng", ".nef", ".nrw", ".orf",
+        ".raf", ".rw2", ".pef", ".raw"];
       if (!previewExts.includes(photo.ext)) continue;
       try {
         const thumb = await FileService.GetThumbnail(photo.path);
