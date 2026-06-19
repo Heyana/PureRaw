@@ -17,6 +17,28 @@ export default defineComponent({
     const settings = useSettingsStore();
     const settingsOpen = ref(false);
 
+    // === 懒加载缩略图 IntersectionObserver ===
+    let thumbObserver: IntersectionObserver | null = null;
+
+    const observeThumb = (el: Element, photo: typeof store.sortedPhotos[number]) => {
+      if (!thumbObserver) {
+        thumbObserver = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              const el = entry.target as HTMLElement;
+              const path = el.dataset.thumbPath;
+              if (path) {
+                const photo = store.sortedPhotos.find(p => p.path === path);
+                if (photo) store.loadSingleThumbnail(photo);
+              }
+              thumbObserver?.unobserve(el);
+            }
+          }
+        }, { rootMargin: "200px" });
+      }
+      thumbObserver.observe(el);
+    };
+
     // === 键盘 ===
     const handleKeydown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -52,6 +74,7 @@ export default defineComponent({
     onUnmounted(() => {
       window.removeEventListener("keydown", handleKeydown);
       if (dropCleanup) dropCleanup();
+      if (thumbObserver) thumbObserver.disconnect();
     });
 
     return () => (
@@ -207,7 +230,11 @@ export default defineComponent({
                 <div class="photo-grid flex-1 overflow-auto p-4">
                   <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                     {store.sortedPhotos.map((photo, i) => (
-                      <div key={photo.path} class="grid-item group cursor-pointer"
+                      <div key={photo.path}
+                        class="grid-item group cursor-pointer"
+                        style="content-visibility:auto;contain-intrinsic-size:1px 200px"
+                        data-thumb-path={photo.path}
+                        ref={(el: any) => { if (el) observeThumb(el, photo); }}
                         onClick={() => store.enterCulling(i)}
                         onContextmenu={(e: MouseEvent) => {
                           e.preventDefault();
@@ -221,7 +248,7 @@ export default defineComponent({
                           store.rejected.has(i) ? "opacity-40" : "group-hover:border-primary/50",
                         ]}>
                           {store.thumbnails[photo.path] ? (
-                            <img src={store.thumbnails[photo.path]} class="w-full h-full object-cover" />
+                            <img src={store.thumbnails[photo.path]} loading="lazy" class="w-full h-full object-cover" />
                           ) : (
                             <div class="w-full h-full flex items-center justify-center bg-muted">
                               <Image class="size-5 opacity-15" />
@@ -253,6 +280,9 @@ export default defineComponent({
                       "flex items-center gap-3 px-4 py-2 border-b border-border/50 cursor-pointer hover:bg-muted/50 transition-colors",
                       store.rejected.has(i) ? "opacity-40" : "",
                     ]} onClick={() => store.enterCulling(i)}
+                      style="content-visibility:auto;contain-intrinsic-size:1px 40px"
+                      data-thumb-path={photo.path}
+                      ref={(el: any) => { if (el) observeThumb(el, photo); }}
                       onContextmenu={(e: MouseEvent) => {
                         e.preventDefault();
                         rightMenu.open([

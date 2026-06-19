@@ -98,8 +98,8 @@ export const usePhotosStore = defineStore("photos", () => {
       thumbnails.value = {};
       await loadFolderHistory();
       if (files && files.length > 0) {
-        // 预加载前几张小图
-        await loadThumbnails(files.slice(0, 20));
+        // 只预加载首屏可见的几张，其余懒加载
+        await loadThumbnails(files.slice(0, 6));
       }
     } catch (e: any) {
       error.value = e?.message || String(e);
@@ -118,17 +118,20 @@ export const usePhotosStore = defineStore("photos", () => {
   async function loadThumbnails(photoList: PhotoInfo[]): Promise<void> {
     for (const photo of photoList) {
       if (thumbnails.value[photo.path]) continue;
-      const previewExts = [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif",
-        ".arw", ".cr2", ".cr3", ".crw", ".dng", ".nef", ".nrw", ".orf",
-        ".raf", ".rw2", ".pef", ".raw"];
-      if (!previewExts.includes(photo.ext)) continue;
-      try {
-        const thumb = await FileService.GetThumbnail(photo.path);
-        if (thumb) thumbnails.value[photo.path] = thumb;
-      } catch {
-        // skip
-      }
+      await loadSingleThumbnail(photo);
     }
+  }
+
+  /** 加载单张缩略图（静默失败） */
+  async function loadSingleThumbnail(photo: PhotoInfo): Promise<void> {
+    const previewExts = [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif",
+      ".arw", ".cr2", ".cr3", ".crw", ".dng", ".nef", ".nrw", ".orf",
+      ".raf", ".rw2", ".pef", ".raw"];
+    if (!previewExts.includes(photo.ext)) return;
+    try {
+      const thumb = await FileService.GetThumbnail(photo.path);
+      if (thumb) thumbnails.value[photo.path] = thumb;
+    } catch { /* skip */ }
   }
 
   /** 刷新当前文件夹所有缩略图（删除磁盘缓存后重新生成） */
@@ -233,6 +236,7 @@ export const usePhotosStore = defineStore("photos", () => {
     isCurrentRejected, isCurrentFlagged,
     loadFolderHistory, openFolder, selectFolder, removeFromHistory,
     loadThumbnails,
+    loadSingleThumbnail,
     refreshThumbnails,
     refreshSingleThumbnail,
     enterCulling, exitCulling,
