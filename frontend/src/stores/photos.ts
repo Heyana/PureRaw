@@ -111,6 +111,12 @@ export const usePhotosStore = defineStore("photos", () => {
     }
   }
 
+  /** 刷新当前文件夹所有缩略图 */
+  async function refreshThumbnails(): Promise<void> {
+    thumbnails.value = {};
+    await loadThumbnails(photos.value);
+  }
+
   // === 筛选模式 ===
 
   function enterCulling(index: number): void {
@@ -189,6 +195,7 @@ export const usePhotosStore = defineStore("photos", () => {
     isCurrentRejected, isCurrentFlagged,
     loadFolderHistory, openFolder, selectFolder, removeFromHistory,
     loadThumbnails,
+    refreshThumbnails,
     enterCulling, exitCulling,
     setRating, toggleRejected, toggleFlagged,
     prev, next, goTo,

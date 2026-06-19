@@ -6,6 +6,7 @@ import {
 } from "@lucide/vue";
 import { usePhotosStore } from "@/stores/photos";
 import { Events } from "@wailsio/runtime";
+import { rightMenu } from "@/composables/useContextMenu";
 
 export default defineComponent({
   name: "Home",
@@ -70,7 +71,14 @@ export default defineComponent({
             <div class="folder-tree flex-1 overflow-auto p-2">
               {store.currentFolder ? (
                 <div class="folder-root px-2 py-1.5 rounded-md bg-accent text-accent-foreground text-sm font-medium truncate cursor-pointer"
-                  onClick={() => store.exitCulling()}>
+                  onClick={() => store.exitCulling()}
+                  onContextmenu={(e: MouseEvent) => {
+                    e.preventDefault();
+                    rightMenu.open([
+                      { label: "刷新缩略图", icon: "refresh", action: () => store.refreshThumbnails() },
+                      { label: "从历史中移除", icon: "delete", danger: true, action: () => store.removeFromHistory(store.currentFolder) },
+                    ], e.clientX, e.clientY);
+                  }}>
                   📁 {store.currentFolder.split(/[\\\/]/).pop()}
                   <span class="text-xs text-muted-foreground ml-1">({store.totalCount})</span>
                 </div>
@@ -83,7 +91,15 @@ export default defineComponent({
                     {store.folderHistory.map(p => (
                       <div key={p} class="group flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-muted cursor-pointer text-sm truncate"
                         title={p}
-                        onClick={() => { store.exitCulling(); store.selectFolder(p); }}>
+                        onClick={() => { store.exitCulling(); store.selectFolder(p); }}
+                        onContextmenu={(e: MouseEvent) => {
+                          e.preventDefault();
+                          rightMenu.open([
+                            { label: "打开", icon: "refresh", action: () => { store.exitCulling(); store.selectFolder(p); } },
+                            { label: "刷新缩略图", icon: "refresh", action: () => { store.selectFolder(p); store.refreshThumbnails(); } },
+                            { label: "从历史中移除", icon: "delete", danger: true, action: () => store.removeFromHistory(p) },
+                          ], e.clientX, e.clientY);
+                        }}>
                         <span class="truncate flex-1">📁 {p.split(/[\\\/]/).pop()}</span>
                         <button class="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-accent shrink-0"
                           onClick={(e) => { e.stopPropagation(); store.removeFromHistory(p); }}>
