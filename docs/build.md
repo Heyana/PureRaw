@@ -1,0 +1,4 @@
+-tags production # 生产环境标签
+-trimpath # 移除文件路径信息
+-buildvcs=false # 不包含版本控制信息
+-ldflags="-w -s -H windowsgui" # -w -s 去除调试信息，-H windowsgui 隐藏控制台窗口

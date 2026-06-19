@@ -1,0 +1,40 @@
+:root {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
+    "Helvetica Neue", sans-serif;
+}
+
+* {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+button,
+[data-wails-drag] {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+body {
+  margin: 0;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* 文件拖放区域样式 */
+.drop-zone {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 40px;
+  margin: 20px;
+  text-align: center;
+  transition: all 0.2s ease;
+  min-height: 200px;
+}
+
+.drop-zone.file-drop-target-active {
+  border-color: #007bff;
+  background-color: rgba(0, 123, 255, 0.1);
+}

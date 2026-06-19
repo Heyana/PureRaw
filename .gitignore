@@ -1,0 +1,9 @@
+node_modules/
+bin/
+tmp/
+frontend/dist/
+build-errors.log
+.kiro/
+.vscode/
+*.syso
+wails_windows_*
