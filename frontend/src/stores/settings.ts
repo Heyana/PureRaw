@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
+import { FileService } from "../../bindings/PureRaw/services/index.js";
 
 export type SortBy = "name" | "date" | "type";
 export type SortOrder = "asc" | "desc";
@@ -60,10 +61,9 @@ export const useSettingsStore = defineStore("settings", () => {
   }
 
   /** 清除缓存 */
-  function clearCache() {
-    // 这里后续可以调用 Go 后端清理缩略图目录
+  async function clearCache() {
+    await FileService.ClearThumbnailCache();
     localStorage.removeItem(STORAGE_KEY);
-    // 重置为默认值
     sortBy.value = "name";
     sortOrder.value = "asc";
     gridMode.value = true;

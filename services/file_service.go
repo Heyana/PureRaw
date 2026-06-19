@@ -295,6 +295,11 @@ func (s *FileService) GetFileDataURI(path string) (string, error) {
 	return "data:" + mime + ";base64," + b64, nil
 }
 
+// ClearThumbnailCache 清除缩略图缓存目录
+func (s *FileService) ClearThumbnailCache() error {
+	return os.RemoveAll(thumbDir())
+}
+
 // === 文件夹历史 ===
 
 type historyData struct {

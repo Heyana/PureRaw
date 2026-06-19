@@ -131,8 +131,9 @@ export const usePhotosStore = defineStore("photos", () => {
     }
   }
 
-  /** 刷新当前文件夹所有缩略图 */
+  /** 刷新当前文件夹所有缩略图（删除磁盘缓存后重新生成） */
   async function refreshThumbnails(): Promise<void> {
+    await FileService.ClearThumbnailCache();
     thumbnails.value = {};
     await loadThumbnails(photos.value);
   }

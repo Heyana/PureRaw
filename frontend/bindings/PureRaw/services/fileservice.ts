@@ -22,6 +22,13 @@ export function AddFolderHistory(folderPath: string): $CancellablePromise<void> 
 }
 
 /**
+ * ClearThumbnailCache 清除缩略图缓存目录
+ */
+export function ClearThumbnailCache(): $CancellablePromise<void> {
+    return $Call.ByID(1825393934);
+}
+
+/**
  * GetFileDataURI 读取文件并返回 data URI
  */
 export function GetFileDataURI(path: string): $CancellablePromise<string> {
