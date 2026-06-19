@@ -1,17 +1,21 @@
-import { defineComponent, onMounted, onUnmounted } from "vue";
+import { defineComponent, onMounted, onUnmounted, ref } from "vue";
 import { Button } from "@/components/ui/button";
 import {
   FolderOpen, Star, Flag, Trash2, ChevronLeft, ChevronRight,
-  Grid3x3, List, X, Image, Info,
+  Grid3x3, List, X, Image, Info, Settings,
 } from "@lucide/vue";
 import { usePhotosStore } from "@/stores/photos";
+import { useSettingsStore } from "@/stores/settings";
 import { Events } from "@wailsio/runtime";
 import { rightMenu } from "@/composables/useContextMenu";
+import SettingsDialog from "@/components/controls/SettingsDialog";
 
 export default defineComponent({
   name: "Home",
   setup() {
     const store = usePhotosStore();
+    const settings = useSettingsStore();
+    const settingsOpen = ref(false);
 
     // === 键盘 ===
     const handleKeydown = (e: KeyboardEvent) => {
@@ -181,14 +185,20 @@ export default defineComponent({
             <div class="pureraw-content flex-1 flex flex-col bg-muted/20">
               <div class="content-toolbar flex items-center justify-between px-4 py-2 border-b bg-background">
                 <span class="text-sm font-medium text-muted-foreground">{store.totalCount} 张照片</span>
-                <div class="flex items-center gap-1 bg-muted rounded-md p-0.5">
-                  <button class={["p-1.5 rounded transition-colors", store.viewMode === "grid" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"]}
-                    onClick={() => store.viewMode = "grid"} title="网格">
-                    <Grid3x3 class="size-3.5" />
-                  </button>
-                  <button class={["p-1.5 rounded transition-colors", store.viewMode === "list" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"]}
-                    onClick={() => store.viewMode = "list"} title="列表">
-                    <List class="size-3.5" />
+                <div class="flex items-center gap-2">
+                  <div class="flex items-center gap-1 bg-muted rounded-md p-0.5">
+                    <button class={["p-1.5 rounded transition-colors", store.viewMode === "grid" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"]}
+                      onClick={() => { store.viewMode = "grid"; settings.gridMode = true; }} title="网格">
+                      <Grid3x3 class="size-3.5" />
+                    </button>
+                    <button class={["p-1.5 rounded transition-colors", store.viewMode === "list" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"]}
+                      onClick={() => { store.viewMode = "list"; settings.gridMode = false; }} title="列表">
+                      <List class="size-3.5" />
+                    </button>
+                  </div>
+                  <button class="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    onClick={() => settingsOpen.value = true} title="设置">
+                    <Settings class="size-3.5" />
                   </button>
                 </div>
               </div>
@@ -196,7 +206,7 @@ export default defineComponent({
               {store.viewMode === "grid" ? (
                 <div class="photo-grid flex-1 overflow-auto p-4">
                   <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                    {store.photos.map((photo, i) => (
+                    {store.sortedPhotos.map((photo, i) => (
                       <div key={photo.path} class="grid-item group cursor-pointer"
                         onClick={() => store.enterCulling(i)}>
                         <div class={[
@@ -232,7 +242,7 @@ export default defineComponent({
                 </div>
               ) : (
                 <div class="photo-list flex-1 overflow-auto">
-                  {store.photos.map((photo, i) => (
+                  {store.sortedPhotos.map((photo, i) => (
                     <div key={photo.path} class={[
                       "flex items-center gap-3 px-4 py-2 border-b border-border/50 cursor-pointer hover:bg-muted/50 transition-colors",
                       store.rejected.has(i) ? "opacity-40" : "",
@@ -359,6 +369,7 @@ export default defineComponent({
           </div>
 
         </div>
+        <SettingsDialog open={settingsOpen.value} onRequestClose={() => { settingsOpen.value = false; }} />
       </div>
     );
   },

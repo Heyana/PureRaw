@@ -23,23 +23,62 @@ const state = reactive<MenuState>({
 });
 
 let closeTimer: ReturnType<typeof setTimeout> | null = null;
+let outsideHandler: ((e: MouseEvent) => void) | null = null;
+let escapeHandler: ((e: KeyboardEvent) => void) | null = null;
+
+function addListeners() {
+  removeListeners();
+
+  // 延迟注册，避免当前右键事件的冒泡触发关闭
+  setTimeout(() => {
+    outsideHandler = (e: MouseEvent) => {
+      // 忽略右键菜单自身的点击
+      const target = e.target as HTMLElement;
+      if (target?.closest(".context-menu-root")) return;
+      forceClose();
+    };
+    escapeHandler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") forceClose();
+    };
+
+    document.addEventListener("click", outsideHandler);
+    document.addEventListener("contextmenu", outsideHandler);
+    document.addEventListener("keydown", escapeHandler);
+  }, 0);
+}
+
+function removeListeners() {
+  if (outsideHandler) {
+    document.removeEventListener("click", outsideHandler);
+    document.removeEventListener("contextmenu", outsideHandler);
+    outsideHandler = null;
+  }
+  if (escapeHandler) {
+    document.removeEventListener("keydown", escapeHandler);
+    escapeHandler = null;
+  }
+}
+
+function forceClose() {
+  if (closeTimer) clearTimeout(closeTimer);
+  state.visible = false;
+  state.items = [];
+  removeListeners();
+}
 
 export function useContextMenu() {
   function open(items: MenuItem[], x: number, y: number) {
-    if (closeTimer) {
-      clearTimeout(closeTimer);
-      closeTimer = null;
-    }
+    if (closeTimer) clearTimeout(closeTimer);
     state.items = items;
     state.x = x;
     state.y = y;
     state.visible = true;
+    addListeners();
   }
 
   function close() {
     closeTimer = setTimeout(() => {
-      state.visible = false;
-      state.items = [];
+      forceClose();
     }, 100);
   }
 
@@ -50,24 +89,14 @@ export function useContextMenu() {
     }
   }
 
-  /** 点击菜单项后自动关闭 */
   function handleItemClick(item: MenuItem) {
-    state.visible = false;
-    state.items = [];
+    forceClose();
     item.action();
   }
 
-  /**
-   * 便捷导出，可直接 import { rightMenu } from "..." 使用
-   */
-  const rightMenu = {
-    open,
-    close,
-  };
-
   return {
     state,
-    rightMenu,
+    rightMenu: { open, close },
     open,
     close,
     cancelClose,
@@ -83,11 +112,9 @@ export const rightMenu = {
     state.x = x;
     state.y = y;
     state.visible = true;
+    addListeners();
   },
   close() {
-    closeTimer = setTimeout(() => {
-      state.visible = false;
-      state.items = [];
-    }, 100);
+    closeTimer = setTimeout(() => forceClose(), 100);
   },
 };

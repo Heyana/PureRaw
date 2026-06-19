@@ -1,17 +1,20 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { FileService, PhotoInfo } from "../../bindings/PureRaw/services/index.js";
+import { useSettingsStore } from "./settings";
 
 export type ViewMode = "grid" | "list";
 
 export const usePhotosStore = defineStore("photos", () => {
+  const settings = useSettingsStore();
+
   // === 文件夹 ===
   const folderHistory = ref<string[]>([]);
   const currentFolder = ref("");
   const photos = ref<PhotoInfo[]>([]);
 
   // === 浏览模式 ===
-  const viewMode = ref<ViewMode>("grid");
+  const viewMode = ref<ViewMode>(settings.gridMode ? "grid" : "list");
 
   // === 筛选模式 ===
   const currentIndex = ref(-1);
@@ -31,6 +34,23 @@ export const usePhotosStore = defineStore("photos", () => {
   );
 
   const totalCount = computed(() => photos.value.length);
+
+  // 排序后的照片列表
+  const sortedPhotos = computed(() => {
+    const list = [...photos.value];
+    const by = settings.sortBy;
+    const order = settings.sortOrder;
+    list.sort((a, b) => {
+      let cmp = 0;
+      if (by === "name") {
+        cmp = a.fileName.localeCompare(b.fileName, undefined, { numeric: true });
+      } else if (by === "type") {
+        cmp = a.ext.localeCompare(b.ext) || a.fileName.localeCompare(b.fileName);
+      }
+      return order === "desc" ? -cmp : cmp;
+    });
+    return list;
+  });
   const ratedCount = computed(() => Object.keys(ratings.value).length);
 
   const currentRating = computed(() =>
@@ -189,6 +209,7 @@ export const usePhotosStore = defineStore("photos", () => {
 
   return {
     folderHistory, currentFolder, photos, viewMode,
+    sortedPhotos,
     currentIndex, ratings, rejected, flagged, currentImage, thumbnails,
     loading, error,
     currentPhoto, totalCount, ratedCount, currentRating,

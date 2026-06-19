@@ -1,4 +1,4 @@
-import { defineComponent, onMounted, onUnmounted, Teleport, h } from "vue";
+import { defineComponent, Teleport, h } from "vue";
 import { useContextMenu } from "@/composables/useContextMenu";
 import { Trash2, RefreshCw } from "@lucide/vue";
 
@@ -10,38 +10,19 @@ const ICON_MAP: Record<string, any> = {
 export default defineComponent({
   name: "ContextMenu",
   setup() {
-    const { state, close, cancelClose, handleItemClick } = useContextMenu();
+    const { state, cancelClose, handleItemClick } = useContextMenu();
 
-    // 渲染图标
     function renderIcon(name?: string) {
       if (!name) return null;
       const Icon = ICON_MAP[name];
       return Icon ? h(Icon, { class: "size-3.5 shrink-0" }) : null;
     }
 
-    // 点击外部关闭
-    const onOutsideClick = () => close();
-    const onKeydown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-    };
-
-    onMounted(() => {
-      document.addEventListener("click", onOutsideClick);
-      document.addEventListener("contextmenu", onOutsideClick);
-      document.addEventListener("keydown", onKeydown);
-    });
-
-    onUnmounted(() => {
-      document.removeEventListener("click", onOutsideClick);
-      document.removeEventListener("contextmenu", onOutsideClick);
-      document.removeEventListener("keydown", onKeydown);
-    });
-
     return () => (
       <Teleport to="body">
         {state.visible ? (
           <div
-            class="fixed z-[9999] min-w-[160px] py-1 rounded-lg border bg-popover text-popover-foreground shadow-xl animate-in fade-in-0 zoom-in-95"
+            class="context-menu-root fixed z-[9999] min-w-[160px] py-1 rounded-lg border bg-popover text-popover-foreground shadow-xl"
             style={{ left: `${state.x}px`, top: `${state.y}px` }}
             onClick={(e) => { e.stopPropagation(); cancelClose(); }}
             onContextmenu={(e) => e.preventDefault()}
