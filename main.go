@@ -123,6 +123,10 @@ func main() {
 	clipboardService := services.NewClipboardService(app)
 	app.RegisterService(application.NewService(clipboardService))
 
+	// 注册文件服务
+	fileService := services.NewFileService(app)
+	app.RegisterService(application.NewService(fileService))
+
 	// Create a goroutine that emits an event containing the current time every second.
 	// The frontend can listen to this event and update the UI accordingly.
 	go func() {

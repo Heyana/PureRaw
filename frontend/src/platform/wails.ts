@@ -15,8 +15,7 @@ import {
 
 // Wails Runtime 导入
 import { Window, Clipboard } from "@wailsio/runtime";
-
-// Wails 后端服务导入
+import { FileService } from "../../bindings/PureRaw/services/index.js";
 
 /**
  * Wails 窗口 API 实现
@@ -60,15 +59,19 @@ class WailsFileAPI extends FileAPI {
     filters?: Array<{ name: string; extensions: string[] }>;
     multiple?: boolean;
   }): Promise<string[]> {
-    // TODO: 实现 Wails 文件选择对话框
-    console.warn("WailsFileAPI.selectFile not implemented yet");
+    // 文件选择对话框暂未实现，返回空数组
+    console.warn("WailsFileAPI.selectFile: use selectFolder instead");
     return [];
   }
 
   async selectFolder(): Promise<string> {
-    // TODO: 实现 Wails 文件夹选择对话框
-    console.warn("WailsFileAPI.selectFolder not implemented yet");
-    return "";
+    try {
+      const path = await FileService.SelectFolder();
+      return path || "";
+    } catch (e) {
+      console.error("selectFolder failed:", e);
+      return "";
+    }
   }
 }
 
